@@ -4,7 +4,6 @@
 package presentacion;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
@@ -30,17 +29,14 @@ public class Modelo {
     private Calculadora calculadora;
     private Memoria memoria;
     private Estados estado;
-
-    /* Atributos auxiliares del proceso */
-    private Object[] ultimaOperacion;
-    private ArrayList<String> proceso;
+    private boolean tomaNumero;
 
     /* Constructor */
     public Modelo() {
         this.calculadora = new Calculadora();
         this.memoria = new Memoria();
         this.estado = Estados.RECIBE_DIGITOS;
-        this.proceso = new ArrayList<>();
+        this.tomaNumero = true;
     }
 
     /* Inicia la vista */
@@ -65,8 +61,6 @@ public class Modelo {
     public void limpiarTodo() {
         calculadora.limpiar();
         limpiarNumero();
-        ultimaOperacion = null;
-        proceso = new ArrayList<>();
         vista.getLblProceso().setText("");
     }
 
@@ -118,7 +112,7 @@ public class Modelo {
         BigDecimal numeroUso = new BigDecimal(vista.getTxtNumero().getText().trim());
 
         try {
-
+            
             /* Dependiendo del grupo de las operaciones se da un orden para añadir los operadores */
             switch (operacion.grupoPerteneciente()) {
 
@@ -159,59 +153,46 @@ public class Modelo {
     private void actualizaProceso(Operaciones operacion, String numero) {
 
         String caracter; //Caracter que representa la operacion
-        String procesoNuevo = ""; //Linea que muestra el proceso
 
-        /* Si la operacion anterior era del grupo operaciones otras toma su valor para ponerlo en parentesis */
-        if (ultimaOperacion != null && ((Operaciones) ultimaOperacion[0]).grupoPerteneciente() == Operaciones.Grupos.OPERACIONES_OTRAS) {
-            caracter = ultimaOperacion[2].toString();
-        } else {
-            caracter = numero;
-        }
-
-        /* Crea el string usando el numero y dependiendo de la operacion */
+        /* Dependiendo de la operacion almacena el simbolo de operacion */
         switch (operacion) {
             case SUMA:
-                caracter = numero + " +";
+                caracter = "+";
                 break;
             case RESTA:
-                caracter = numero + " -";
+                caracter = "-";
                 break;
             case MULTIPLICACION:
-                caracter = numero + " ×";
+                caracter = "×";
                 break;
             case DIVISION:
-                caracter = numero + " ÷";
+                caracter = "÷";
                 break;
             case RAIZ_CUADRADA:
-                caracter = "√(" + caracter + ")";
+                caracter = "√(" + numero + ")";
                 break;
             case CUADRADO:
-                caracter = "(" + caracter + ")²";
+                caracter = numero + "²";
                 break;
             case INVERSO:
-                caracter = "1/(" + caracter + ")";
+                caracter = "(1/" + numero + ")";
                 break;
             case PORCENTAJE:
-                caracter = vista.getTxtNumero().getText().trim();
+                caracter = numero + "%";
                 break;
             default:
-                caracter = numero + " =";
+                caracter = "=";
                 break;
         }
 
-        /* Dependiendo el grupo de operacion reemplaza o agrega el string a la lista */
-        if (ultimaOperacion != null && ((Operaciones) ultimaOperacion[0]).grupoPerteneciente() == Operaciones.Grupos.OPERACIONES_OTRAS) {
-            proceso.set(proceso.size() - 1, " " + caracter);
-        } else {
-            proceso.add(" " + caracter);
+        /* Si es de las operaciones basicas verifica si debe tomar el numero en pantalla */
+        if (operacion.perteneceAlGrupo(Operaciones.Grupos.OPERACIONES_BASICAS)) {
+            caracter = tomaNumero ? numero + " " + caracter : caracter;
+            tomaNumero = true;
+        } else { //No es de operaciones basicas, se puede haber ejecutado una raiz, cuadrado, etc., No toma el siguiente digito
+            tomaNumero = false;
         }
-
-        /* Actualiza la ultima operacion */
-        ultimaOperacion = new Object[]{operacion, numero, caracter};
-
-        /* Crea la string de proceso y lo actualiza */
-        procesoNuevo = proceso.stream().map((p) -> p).reduce(procesoNuevo, String::concat); //Usa los metodos de las librerias
-        vista.getLblProceso().setText(procesoNuevo);
+        vista.getLblProceso().setText(vista.getLblProceso().getText() + " " + caracter);
     }
 
     /* Metodos que son llamados desde controlador */
